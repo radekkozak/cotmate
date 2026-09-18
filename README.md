@@ -25,7 +25,7 @@ locally, save, and the changes go straight back to the remote host.
 
 TextMate has built-in support for `rmate` — a tiny protocol that lets a
 remote shell tell your local editor to open a file. CotEditor has no such
-support. CotMate bridges that gap: it listens on the standard `rmate` port
+support. `cotmate` bridges that gap: it listens on the standard `rmate` port
 (52698), materialises remote files as local mirrors, opens them in
 CotEditor, and streams your saves back to the remote host over the same
 SSH connection that `rmate` opened.
@@ -118,8 +118,8 @@ rmate test-file.txt
 The file opens in CotEditor on your Mac. Save, and the remote file is
 updated. Close the CotEditor window to end the session.
 
-If you prefer to use the official Ruby `rmate`, that works too — CotMate
-speaks the same protocol.
+If you prefer to use the official Ruby `rmate`, that should work too — `cotmate`
+speaks essentialy the same protocol
 
 ---
 
@@ -179,7 +179,7 @@ tail -50 ~/Library/Application\ Support/CotMate/cotmate.log
 ./uninstall.sh
 ```
 
-Removes every file CotMate installed and unloads the launchd agent. Your
+Removes every file `cotmate` installed and unloads the launchd agent. Your
 CotEditor install is untouched.
 
 ---
