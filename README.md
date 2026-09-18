@@ -54,7 +54,7 @@ SSH connection that `rmate` opened.
 
 - macOS 12 (Monterey) or later
 - [CotEditor 4.x](https://coteditor.com/) (tested with CotEditor 4.5.9)
-- Python 3.8+ (the system Python 3 shipped with Monterey and higher should be fine)
+- Python 3.9+ (usually provided via Xcode Command Line Tools but you can install via `mise` or some other tools)
 - The CotEditor CLI (`cot`). Enable it once via
   **CotEditor → Help → Install Command Line Tool**, or symlink
   `/Applications/CotEditor.app/Contents/SharedSupport/bin/cot`

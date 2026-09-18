@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Almost every CotMate problem falls into one of five categories. Work
+Almost every `cotmate` problem falls into one of five categories. Work
 through them in order.
 
 ---
@@ -72,7 +72,7 @@ server but launchd doesn't, the plist is the problem — re-run
 
 ## 3. Orphan server (listener exists, pidfile doesn't match)
 
-This is the most common CotMate support case. It happens when an
+This is the most common `cotmate` support case. It happens when an
 earlier version of the server was left running — usually because a
 previous launcher, or a manual invocation, started a server that the
 current watchdog doesn't know about.
@@ -139,7 +139,7 @@ when the SSH session ends.
 
 ### Second `rmate` on the same file is rejected
 
-This is intentional. CotMate refuses to open the same remote path twice
+This is intentional. `cotmate` refuses to open the same remote path twice
 concurrently, because two CotEditor windows writing back to one remote
 file is last-writer-wins. Look for this line in the log:
 
@@ -149,7 +149,7 @@ Close the first window, then re-run `rmate`.
 
 ### `rmate` is not installed on the remote host
 
-The remote needs `rmate`. CotMate vendors a pure-Bash version that
+The remote needs `rmate`. `cotmate` vendors a pure-Bash version that
 needs no Ruby:
 
     scp vendor/rmate/rmate user@server:~/.local/bin/
@@ -187,9 +187,9 @@ Common culprits:
 
 - **TextMate itself.** If you have TextMate running with its built-in
   rmate listener on the same port, only one server can bind. Quit
-  TextMate, or run CotMate on a different port (`cotmate --port 52699`
+  TextMate, or run `cotmate` on a different port (`cotmate --port 52699`
   and matching `rmate -p 52699`).
-- **A stale CotMate from a previous version.** Kill it (§3) and reload
+- **A stale `cotmate` from a previous version.** Kill it (§3) and reload
   the agent.
 
 ---
@@ -217,7 +217,7 @@ Monterey.
 
 ## 7. "python3 not found" or version errors
 
-CotMate needs Python 3.9 or newer. On every macOS from Monterey onward,
+`cotmate` needs Python 3.9 or newer. On every macOS from Monterey onward,
 this is provided by the Xcode Command Line Tools. If you don't have
 them:
 
@@ -244,7 +244,7 @@ edit `EnvironmentVariables` in the plist directly.
 
 If you want to reset everything to a clean state without uninstalling:
 
-    # Stop everything CotMate.
+    # Stop everything related to cotmate.
     launchctl unload ~/Library/LaunchAgents/com.radekkozak.cotmate.watcher.plist
     pkill -f cotmate-watcher
     kill $(lsof -tiTCP:52698 -sTCP:LISTEN) 2>/dev/null
