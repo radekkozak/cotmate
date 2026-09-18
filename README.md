@@ -2,7 +2,7 @@
 
 _**rmate-compatible** remote editing for CotEditor_
 
-`cotmate` lets you open files on remote servers in your local
+`cotmate` lets you open and edit files on remote servers via SSH session in
 [CotEditor](https://coteditor.com/) — the same way TextMate users have used
 `rmate` for over a decade. Point `rmate` at a file over SSH, edit it
 locally, save, and the changes go straight back to the remote host.
@@ -13,14 +13,14 @@ locally, save, and the changes go straight back to the remote host.
   when you quit it.
   
 > [!TIP]
-> **You can still use TextMate with rmate as before** - essentialy you can joggle whichever editor you fancy.
+> **You can still use TextMate with rmate as before** - essentialy you can juggle whichever editor you fancy.
 
 > [!IMPORTANT]
 > It is recommended that only one editor at a time is opened for the same remote file (`52698` port is used).
 >
-> If both TextMate and CotEditor are editing the same remote file, last editor that saves it wins ;)
+> If both TextMate and CotEditor are editing the same remote file, last editor that saves the file wins ;)
 
-## The _why_ behing the `cotmate`
+## The _why_ behind the `cotmate`
 
 TextMate has built-in support for `rmate` — a tiny protocol that lets a
 remote shell tell your local editor to open a file. CotEditor has no such
@@ -67,7 +67,7 @@ cd cotmate
 
 The installer:
 
-1. Copies `cotmate` to `~/.local/bin/cotmate`.
+1. Copies `cotmate` to `~/Library/Application Support/CotMate/bin/cotmate`.
 2. Copies the launcher and watcher scripts into
    `~/Library/Application Scripts/com.coteditor.CotEditor/`.
 3. Installs a launchd agent at
@@ -116,8 +116,9 @@ speaks essentialy the same protocol
 
 ## How it works
 
-- **cotmate** (`bin/cotmate`): a small Python TCP server listening on
-  `127.0.0.1:52698`. It receives `open`, `save`, and `close` commands
+- **cotmate** (`bin/cotmate`, installed to
+  `~/Library/Application Support/CotMate/bin/cotmate)`: a small Python TCP server
+  listening on `127.0.0.1:52698`. It receives `open`, `save`, and `close` commands
   from `rmate`, writes each remote file into
   `~/Library/Application Support/CotMate/mirrors/<host>/…`, and opens it
   in CotEditor via the `cot` CLI. A polling thread watches each mirror
@@ -143,8 +144,7 @@ speaks essentialy the same protocol
   server start. They are not meant to be edited directly.
 - **Log.** `~/Library/Application Support/CotMate/cotmate.log`. Rotated
   automatically by the launcher at 1000 lines.
-- **Port.** 52698 (the standard `rmate` port). If you need a different
-  one, pass `--port` to `cotmate`.
+- **Port.** 52698 (the standard `rmate` port)
 
 ## Troubleshooting
 

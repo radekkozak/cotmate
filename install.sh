@@ -9,10 +9,10 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --- destinations -----------------------------------------------------------
 
-BIN_DIR="$HOME/.local/bin"
 APPS_SCRIPTS="$HOME/Library/Application Scripts/com.coteditor.CotEditor"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
 SUPPORT_DIR="$HOME/Library/Application Support/CotMate"
+SUPPORT_BIN="$SUPPORT_DIR/bin"
 
 PLIST_LABEL="com.radekkozak.cotmate.watcher"
 PLIST_SRC="$REPO_DIR/launchd/${PLIST_LABEL}.plist"
@@ -87,12 +87,12 @@ fi
 
 # --- directories ------------------------------------------------------------
 
-mkdir -p "$BIN_DIR" "$APPS_SCRIPTS" "$LAUNCH_AGENTS" "$SUPPORT_DIR"
+mkdir -p "$APPS_SCRIPTS" "$LAUNCH_AGENTS" "$SUPPORT_BIN"
 
 # --- server -----------------------------------------------------------------
 
-echo "→ installing server to $BIN_DIR/cotmate"
-install -m 0755 "$REPO_DIR/bin/cotmate" "$BIN_DIR/cotmate"
+echo "→ installing server to $SUPPORT_BIN/cotmate"
+install -m 0755 "$REPO_DIR/bin/cotmate" "$SUPPORT_BIN/cotmate"
 
 # --- launcher + watcher -----------------------------------------------------
 
@@ -132,7 +132,7 @@ cat <<EOF
 ────────────────────────────────────────────────────────────
 CotMate installed.
 
-  server    $BIN_DIR/cotmate
+  server    $SUPPORT_BIN/cotmate
   launcher  $APPS_SCRIPTS/cotmate-launcher.sh
   hook      $HOOK_DEST
 $(
@@ -149,7 +149,7 @@ Quit CotEditor completely, then reopen it. Open any file and check the log:
 
 Then from a remote host:
 
-  scp bin/rmate user@server:~/.local/bin/
+  scp vendor/rmate/rmate user@server:~/.local/bin/
   ssh user@server 'chmod +x ~/.local/bin/rmate'
   rmate /tmp/test.txt
 ────────────────────────────────────────────────────────────

@@ -3,8 +3,6 @@
 Almost every `cotmate` problem falls into one of five categories. Work
 through them in order.
 
----
-
 ## 1. Ground truth: three commands to run first
 
 Before anything else, run these three commands on your Mac. Their
@@ -27,8 +25,6 @@ Interpretation:
 | `lsof` shows a listener, but pidfile is missing or points elsewhere | Orphan server from an earlier run | §3 |
 | `lsof` shows a listener, pidfile matches, log looks healthy | Server is fine; problem is remote-side | §4 |
 | `lsof` shows a listener on a *different* port | Something else grabbed 52698 | §5 |
-
----
 
 ## 2. Server isn't running
 
@@ -68,8 +64,6 @@ Then run the three ground-truth commands again. If this starts the
 server but launchd doesn't, the plist is the problem — re-run
 `./install.sh`.
 
----
-
 ## 3. Orphan server (listener exists, pidfile doesn't match)
 
 This is the most common `cotmate` support case. It happens when an
@@ -99,8 +93,6 @@ Then quit and relaunch CotEditor.
 > started via a different command line (a manual `python3 …`, an old
 > script, a stale launchd job) won't match `pkill cotmate`. `lsof` is
 > the only reliable way to find who is actually bound to the port.
-
----
 
 ## 4. Remote-side problems
 
@@ -175,8 +167,6 @@ which requires `bash` to be installed. It usually is; if not:
     # Alpine
     sudo apk add bash
 
----
-
 ## 5. Port 52698 is taken by something else
 
 Check what's bound:
@@ -187,12 +177,14 @@ Common culprits:
 
 - **TextMate itself.** If you have TextMate running with its built-in
   rmate listener on the same port, only one server can bind. Quit
-  TextMate, or run `cotmate` on a different port (`cotmate --port 52699`
-  and matching `rmate -p 52699`).
+  TextMate to free the port for `cotmate`.
 - **A stale `cotmate` from a previous version.** Kill it (§3) and reload
   the agent.
 
----
+Running `cotmate` on a non-standard port requires editing both the
+launcher's health-check line and the cotmate invocation, and using the
+matching `-p` flag on the remote `rmate` side.  It is possible but not
+currently a supported configuration.
 
 ## 6. "The operation couldn't be completed" in Console
 
@@ -212,8 +204,6 @@ If the error persists, the bundle's `Info.plist` may be missing the
 that CotEditor tried to compile as AppleScript. The hook must be
 written in AppleScript, not JavaScript, for CotEditor 4.5.x on
 Monterey.
-
----
 
 ## 7. "python3 not found" or version errors
 
@@ -238,8 +228,6 @@ To force a specific interpreter (e.g. Homebrew's Python), export
 Then reload the launchd agent so the watcher inherits the variable, or
 edit `EnvironmentVariables` in the plist directly.
 
----
-
 ## 8. Starting over
 
 If you want to reset everything to a clean state without uninstalling:
@@ -257,8 +245,6 @@ If you want to reset everything to a clean state without uninstalling:
 
 Then quit and relaunch CotEditor. A fresh `cotmate.log` and
 `cotmate.pid` will appear within a couple of seconds.
-
----
 
 ## 9. Reporting a bug
 

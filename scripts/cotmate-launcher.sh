@@ -9,7 +9,7 @@
 #   - override: export COTMATE_PYTHON=/opt/homebrew/bin/python3.12
 PYTHON="${COTMATE_PYTHON:-python3}"
 
-COTMATE_PY="$HOME/.local/bin/cotmate"
+COTMATE_PY="$HOME/Library/Application Support/CotMate/bin/cotmate"
 PIDFILE="$HOME/Library/Application Support/CotMate/cotmate.pid"
 LOG="$HOME/Library/Application Support/CotMate/cotmate.log"
 LOCKDIR="/tmp/cotmate-launcher.lock"

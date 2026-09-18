@@ -11,8 +11,8 @@ LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
 PLIST_LABEL="com.radekkozak.cotmate.watcher"
 PLIST_DEST="$LAUNCH_AGENTS/${PLIST_LABEL}.plist"
 SUPPORT_DIR="$HOME/Library/Application Support/CotMate"
+SUPPORT_BIN="$SUPPORT_DIR/bin"
 LOG_DIR="$HOME/Library/Logs"
-BIN_DIR="$HOME/.local/bin"
 LOCKDIR="/tmp/cotmate-launcher.lock"
 
 echo "CotMate uninstaller"
@@ -56,27 +56,39 @@ if command -v lsof >/dev/null 2>&1; then
     fi
 fi
 
-# 5. Remove installed files.
-rm -f  "$BIN_DIR/cotmate"
+# 5. Remove installed scripts and hook.
 rm -f  "$APPS_SCRIPTS/cotmate-launcher.sh"
 rm -f  "$APPS_SCRIPTS/cotmate-watcher.sh"
 rm -rf "$APPS_SCRIPTS/CotMateHook.scptd"
 echo "→ removed scripts and hook"
 
-# 6. Remove runtime state (pid, log, mirrors).
+# 6. Remove the server binary from its application-support home.
+if [[ -f "$SUPPORT_BIN/cotmate" ]]; then
+    rm -f "$SUPPORT_BIN/cotmate"
+    echo "→ removed server binary"
+fi
+
+# Legacy cleanup: older CotMate versions installed the server here.
+# Safe to run even if the file doesn't exist.
+if [[ -f "$HOME/.local/bin/cotmate" ]]; then
+    rm -f "$HOME/.local/bin/cotmate"
+    echo "→ removed legacy server binary from ~/.local/bin"
+fi
+
+# 7. Remove runtime state (pid, log, mirrors, bin/).
 rm -rf "$SUPPORT_DIR"
 echo "→ removed runtime state"
 
-# 7. Remove watcher logs written by launchd.
+# 8. Remove watcher logs written by launchd.
 rm -f "$LOG_DIR/cotmate-watcher.log" "$LOG_DIR/cotmate-watcher.err"
 echo "→ removed watcher logs"
 
-# 8. Clear the launcher lock directory if it was orphaned by a crash.
+# 9. Clear the launcher lock directory if it was orphaned by a crash.
 rmdir "$LOCKDIR" 2>/dev/null || true
 
 echo ""
 echo "Done.  CotEditor is untouched."
 echo ""
 echo "Note: nothing was installed on your remote hosts."
-echo "      If you copied bin/rmate to a server, remove it with:"
+echo "      If you copied rmate to a server, remove it with:"
 echo "          ssh user@server 'rm ~/.local/bin/rmate'"
