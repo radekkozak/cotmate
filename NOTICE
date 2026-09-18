@@ -1,0 +1,26 @@
+CotMate
+Copyright (c) 2026 Radek Kozak
+
+This product includes software developed by third parties.
+
+----------------------------------------------------------------------
+
+rmate (vendor/rmate/rmate)
+
+    A pure-Bash implementation of the rmate remote editing protocol.
+
+    Copyright (C) 2011-present Harald Lapp <harald@octris.org>
+    Licensed under the GNU General Public License, version 3.
+
+    The file vendor/rmate/rmate is included unmodified from the
+    upstream repository at:
+
+        https://github.com/aurora/rmate
+
+    The complete text of the GNU General Public License v3 is provided
+    in vendor/rmate/rmate.LICENSE.
+
+----------------------------------------------------------------------
+
+CotMate's own code (everything outside vendor/) is licensed under the
+MIT License.  See LICENSE for details.

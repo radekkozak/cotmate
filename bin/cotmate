@@ -1,0 +1,881 @@
+#!/usr/bin/env python3
+
+"""
+CotMate
+=======
+
+An rmate-compatible TCP server for CotEditor on macOS.
+
+Protocol:
+    rmate client  --->  CotMate  --->  local mirror  --->  CotEditor
+
+When CotEditor modifies the local mirror, CotMate sends the changed
+contents back to the rmate client using the rmate "save" command.
+
+No sudo is required or used.
+
+Default listener:
+    127.0.0.1:52698
+
+Requires Python 3.9+ (the version shipped by Xcode Command Line Tools
+on macOS Monterey and every later release).
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import pathlib
+import shutil
+import signal
+import socket
+import subprocess
+import threading
+import time
+import uuid
+from typing import Optional
+
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+HOST = "127.0.0.1"
+PORT = 52698
+
+POLL_INTERVAL = 0.25
+
+BASE_DIR = (
+    pathlib.Path.home()
+    / "Library"
+    / "Application Support"
+    / "CotMate"
+)
+
+# Mirror files live here.  Kept separate from the log and pid file so
+# startup cleanup can wipe the tree without touching anything else.
+MIRRORS_DIR = BASE_DIR / "mirrors"
+
+
+# ---------------------------------------------------------------------------
+# Registry of currently-open remote documents.
+#
+# Keyed by (host_dir, real_path).  Used to reject duplicate opens of the
+# same remote file so two rmate sessions cannot silently fight over the
+# same remote target (last-writer-wins).
+# ---------------------------------------------------------------------------
+
+_open_documents: "dict[tuple[str, str], RemoteDocument]" = {}
+_open_lock = threading.Lock()
+
+
+# ---------------------------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------------------------
+
+def find_cot() -> str:
+    """
+    Find the normal CotEditor CLI.
+
+    Prefer PATH so this uses the same `cot` command the user gets
+    interactively.
+    """
+
+    cot = shutil.which("cot")
+
+    if cot:
+        return cot
+
+    fallback = "/Applications/CotEditor.app/Contents/SharedSupport/bin/cot"
+
+    if os.path.exists(fallback):
+        return fallback
+
+    raise FileNotFoundError(
+        "Unable to find CotEditor CLI (`cot`). "
+        "Make sure /usr/local/bin/cot exists or CotEditor is installed."
+    )
+
+
+def safe_host_name(display_name: str) -> str:
+    """
+    Convert the remote host portion into a filesystem-safe directory name.
+    """
+
+    host = display_name.split(":", 1)[0]
+
+    return "".join(
+        c if c.isalnum() or c in "._-" else "_"
+        for c in host
+    )
+
+
+def cleanup_stale_mirrors() -> None:
+    """
+    Remove leftover mirror files from previous runs.
+
+    Called once at server start.  At that moment nothing can legitimately
+    be using anything under MIRRORS_DIR, so it is safe to wipe the tree.
+    """
+
+    if not MIRRORS_DIR.exists():
+        return
+
+    removed = 0
+
+    for root, dirs, files in os.walk(MIRRORS_DIR, topdown=False):
+        for name in files:
+            try:
+                os.unlink(os.path.join(root, name))
+                removed += 1
+            except OSError:
+                pass
+
+        for name in dirs:
+            try:
+                os.rmdir(os.path.join(root, name))
+            except OSError:
+                pass
+
+    if removed:
+        print(
+            f"[cotmate] cleaned {removed} stale mirror file(s)",
+            flush=True,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Remote document
+# ---------------------------------------------------------------------------
+
+class RemoteDocument:
+    def __init__(
+        self,
+        connection: socket.socket,
+        token: str,
+        display_name: str,
+        real_path: str,
+        data: bytes,
+        file_type: Optional[str] = None,
+        line: Optional[int] = None,
+        column: Optional[int] = None,
+    ):
+        self.connection = connection
+        self.token = token
+
+        self.display_name = display_name
+        self.real_path = real_path
+
+        self.file_type = file_type
+        self.line = line
+        self.column = column
+
+        self.closed = False
+
+        self.last_mtime = None
+        self.last_size = None
+
+        self.lock = threading.Lock()
+
+        # ---------------------------------------------------------------
+        # Build a local mirror path.
+        # ---------------------------------------------------------------
+
+        host_dir = safe_host_name(display_name)
+
+        # Key used to register this document in the global registry.
+        self.registry_key = (host_dir, real_path)
+
+        relative = pathlib.Path(real_path.lstrip("/"))
+
+        self.local_dir = (
+            MIRRORS_DIR
+            / host_dir
+            / relative.parent
+        )
+
+        self.local_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        # With duplicate opens now rejected upstream, we should never
+        # see an existing local path here.  Keep the UUID fallback
+        # anyway as a belt-and-braces safety net.
+        self.local_path = self.local_dir / relative.name
+
+        if self.local_path.exists():
+            self.local_path = (
+                self.local_dir
+                / (
+                    f"{relative.name}."
+                    f"cotmate-{uuid.uuid4().hex[:8]}"
+                )
+            )
+
+        # ---------------------------------------------------------------
+        # Write initial remote contents.
+        # ---------------------------------------------------------------
+
+        self.local_path.write_bytes(data)
+
+        self.update_stat()
+
+    # ------------------------------------------------------------------
+    # File state
+    # ------------------------------------------------------------------
+
+    def update_stat(self) -> None:
+        try:
+            stat = self.local_path.stat()
+
+            self.last_mtime = stat.st_mtime_ns
+            self.last_size = stat.st_size
+
+        except FileNotFoundError:
+            self.last_mtime = None
+            self.last_size = None
+
+    def changed(self) -> bool:
+        try:
+            stat = self.local_path.stat()
+        except FileNotFoundError:
+            return False
+
+        return (
+            stat.st_mtime_ns != self.last_mtime
+            or stat.st_size != self.last_size
+        )
+
+    # ------------------------------------------------------------------
+    # CotEditor
+    # ------------------------------------------------------------------
+
+    def open_in_cot(self) -> None:
+        cot = find_cot()
+
+        command = [cot]
+
+        if self.file_type:
+            command += [
+                "--syntax",
+                self.file_type,
+            ]
+
+        if self.line:
+            command += [
+                "--line",
+                str(self.line),
+            ]
+
+        if self.column:
+            command += [
+                "--column",
+                str(self.column),
+            ]
+
+        command.append(str(self.local_path))
+
+        print(
+            "[cotmate] running:",
+            " ".join(command),
+            flush=True,
+        )
+
+        # IMPORTANT:
+        #
+        # Do not use sudo.
+        #
+        # CotMate runs as the logged-in GUI user, so CotEditor must
+        # also be launched inside that user's GUI session.
+        subprocess.Popen(
+            command,
+            env=os.environ.copy(),
+        )
+
+        print(
+            f"[cotmate] opened {self.display_name} "
+            f"-> {self.local_path}",
+            flush=True,
+        )
+
+    # ------------------------------------------------------------------
+    # Remote save
+    # ------------------------------------------------------------------
+
+    def send_save(self) -> None:
+        try:
+            data = self.local_path.read_bytes()
+        except FileNotFoundError:
+            return
+
+        # NOTE: the body must be sent *before* the terminating blank
+        # line.  The bash rmate implementation reads `data: N` and then
+        # immediately reads N raw bytes; the blank line is what
+        # terminates the command.
+        header = (
+            "save\n"
+            f"token: {self.token}\n"
+            f"data: {len(data)}\n"
+        ).encode("utf-8")
+
+        try:
+            with self.lock:
+                self.connection.sendall(header)
+                self.connection.sendall(data)
+                self.connection.sendall(b"\n")
+
+            self.update_stat()
+
+            print(
+                f"[cotmate] saved {self.display_name} "
+                f"({len(data)} bytes)",
+                flush=True,
+            )
+
+        except (
+            BrokenPipeError,
+            ConnectionResetError,
+            ConnectionAbortedError,
+            OSError,
+        ):
+            self.closed = True
+
+    # ------------------------------------------------------------------
+    # Monitor
+    # ------------------------------------------------------------------
+
+    def monitor(self) -> None:
+        while not self.closed:
+
+            time.sleep(POLL_INTERVAL)
+
+            if self.changed():
+                self.send_save()
+
+    # ------------------------------------------------------------------
+    # Close
+    # ------------------------------------------------------------------
+
+    def close(self, notify_remote: bool = True) -> None:
+        if self.closed:
+            return
+
+        self.closed = True
+
+        # Deregister from the global registry.
+        with _open_lock:
+            if _open_documents.get(self.registry_key) is self:
+                del _open_documents[self.registry_key]
+
+        if notify_remote:
+            try:
+                message = (
+                    "close\n"
+                    f"token: {self.token}\n"
+                    "\n"
+                ).encode("utf-8")
+
+                with self.lock:
+                    self.connection.sendall(message)
+
+            except OSError:
+                pass
+
+        try:
+            self.local_path.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            print(
+                f"[cotmate] unable to remove "
+                f"{self.local_path}: {exc}",
+                flush=True,
+            )
+
+        print(
+            f"[cotmate] closed {self.display_name}",
+            flush=True,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Protocol reader
+# ---------------------------------------------------------------------------
+
+def read_line(sock: socket.socket) -> str:
+    """
+    Read one UTF-8 protocol line.
+
+    Lines are terminated by LF. CR before LF is removed.
+    """
+
+    data = bytearray()
+
+    while True:
+        chunk = sock.recv(1)
+
+        if not chunk:
+            raise EOFError
+
+        if chunk == b"\n":
+            return bytes(data).decode(
+                "utf-8"
+            ).rstrip("\r")
+
+        data.extend(chunk)
+
+
+def read_command(
+    sock: socket.socket,
+) -> "tuple[str, dict[str, str], bytes]":
+    """
+    Read one rmate command.
+
+    Returns:
+        command
+        headers
+        body
+    """
+
+    command = read_line(sock)
+
+    headers: "dict[str, str]" = {}
+    body = b""
+
+    # The bash rmate client sends a bare "." as a handshake separator
+    # with no header block and no blank terminator.  Short-circuit so
+    # we don't block forever waiting for a blank line that never comes.
+    if command == ".":
+        return command, headers, body
+
+    while True:
+        line = read_line(sock)
+
+        if line == "":
+            break
+
+        if ":" not in line:
+            continue
+
+        name, value = line.split(":", 1)
+
+        value = value.lstrip()
+
+        if name == "data":
+            size = int(value)
+
+            remaining = size
+
+            chunks = []
+
+            while remaining:
+                chunk = sock.recv(
+                    min(65536, remaining)
+                )
+
+                if not chunk:
+                    raise EOFError
+
+                chunks.append(chunk)
+
+                remaining -= len(chunk)
+
+            body = b"".join(chunks)
+
+        else:
+            headers[name] = value
+
+    return command, headers, body
+
+
+# ---------------------------------------------------------------------------
+# Connection handler
+# ---------------------------------------------------------------------------
+
+def handle_connection(
+    connection: socket.socket,
+    address,
+) -> None:
+
+    documents: "dict[str, RemoteDocument]" = {}
+
+    # We only log a connection once it has sent at least one command.
+    # This keeps the `nc -z` health-check probes from the launcher out
+    # of the log entirely, since they connect and disconnect without
+    # sending anything.
+    logged = False
+
+    try:
+        # rmate expects server identification first.
+        connection.sendall(
+            b"cotmate 1.0\n"
+        )
+
+        while True:
+
+            command, headers, body = read_command(
+                connection
+            )
+
+            if not logged:
+                print(
+                    f"[cotmate] connection from "
+                    f"{address[0]}:{address[1]}",
+                    flush=True,
+                )
+                logged = True
+
+            # -----------------------------------------------------------
+            # Keepalive / protocol separator.
+            # -----------------------------------------------------------
+
+            if command == ".":
+                continue
+
+            # -----------------------------------------------------------
+            # OPEN
+            # -----------------------------------------------------------
+
+            if command == "open":
+
+                token = headers.get(
+                    "token",
+                    "",
+                )
+
+                display_name = headers.get(
+                    "display-name",
+                    token,
+                )
+
+                real_path = headers.get(
+                    "real-path",
+                    token,
+                )
+
+                file_type = headers.get(
+                    "file-type"
+                )
+
+                line = None
+                column = None
+
+                selection = headers.get(
+                    "selection"
+                )
+
+                if selection:
+                    parts = selection.split(",")
+
+                    try:
+                        line = int(parts[0])
+                    except (
+                        ValueError,
+                        IndexError,
+                    ):
+                        line = None
+
+                    if len(parts) > 1:
+                        try:
+                            column = int(parts[1])
+                        except ValueError:
+                            column = None
+
+                # If this token already exists on *this* connection,
+                # close the old document before replacing it.
+                old_document = documents.get(token)
+
+                if old_document:
+                    old_document.close(
+                        notify_remote=False
+                    )
+
+                # Reject duplicate opens of the same remote file from
+                # another connection.  This prevents silent
+                # last-writer-wins races on the remote file.
+                key = (safe_host_name(display_name), real_path)
+
+                with _open_lock:
+                    existing = _open_documents.get(key)
+
+                    if existing is not None and not existing.closed:
+                        try:
+                            msg = (
+                                "close\n"
+                                f"token: {token}\n"
+                                "\n"
+                            ).encode("utf-8")
+                            connection.sendall(msg)
+                        except OSError:
+                            pass
+
+                        print(
+                            f"[cotmate] rejected duplicate open "
+                            f"of {display_name} (already open)",
+                            flush=True,
+                        )
+                        continue
+
+                document = RemoteDocument(
+                    connection=connection,
+                    token=token,
+                    display_name=display_name,
+                    real_path=real_path,
+                    data=body,
+                    file_type=file_type,
+                    line=line,
+                    column=column,
+                )
+
+                documents[token] = document
+
+                with _open_lock:
+                    _open_documents[key] = document
+
+                document.open_in_cot()
+
+                monitor_thread = threading.Thread(
+                    target=document.monitor,
+                    name=f"cotmate-{token}",
+                    daemon=True,
+                )
+
+                monitor_thread.start()
+
+            # -----------------------------------------------------------
+            # SAVE
+            # -----------------------------------------------------------
+
+            elif command == "save":
+
+                token = headers.get(
+                    "token",
+                    "",
+                )
+
+                document = documents.get(token)
+
+                if document is None:
+                    continue
+
+                # A remote-side save does not contain useful new data
+                # for our direction of the protocol. The actual data
+                # flow we care about is CotEditor -> monitor -> save.
+                #
+                # Still update the baseline so that a remote save
+                # notification itself doesn't cause unnecessary work.
+                document.update_stat()
+
+            # -----------------------------------------------------------
+            # CLOSE
+            # -----------------------------------------------------------
+
+            elif command == "close":
+
+                token = headers.get(
+                    "token",
+                    "",
+                )
+
+                document = documents.pop(
+                    token,
+                    None,
+                )
+
+                if document:
+                    document.close(
+                        notify_remote=False
+                    )
+
+            # -----------------------------------------------------------
+            # UNKNOWN
+            # -----------------------------------------------------------
+
+            else:
+
+                print(
+                    f"[cotmate] ignoring unknown "
+                    f"command: {command}",
+                    flush=True,
+                )
+
+    except EOFError:
+        pass
+
+    except (
+        ConnectionResetError,
+        ConnectionAbortedError,
+        BrokenPipeError,
+    ):
+        pass
+
+    except Exception as exc:
+        print(
+            f"[cotmate] connection error: "
+            f"{exc}",
+            flush=True,
+        )
+
+    finally:
+
+        for document in documents.values():
+            document.close(
+                notify_remote=False
+            )
+
+        try:
+            connection.close()
+        except OSError:
+            pass
+
+        # Only announce the closing if we announced the opening.
+        if logged:
+            print(
+                "[cotmate] connection closed",
+                flush=True,
+            )
+
+
+# ---------------------------------------------------------------------------
+# Main server
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "rmate-compatible TCP server "
+            "for CotEditor"
+        )
+    )
+
+    parser.add_argument(
+        "--host",
+        default=HOST,
+        help=f"Listen address (default: {HOST})",
+    )
+
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=PORT,
+        help=f"Listen port (default: {PORT})",
+    )
+
+    parser.add_argument(
+        "--pidfile",
+        type=pathlib.Path,
+        default=None,
+        help="Write the server PID to this file",
+    )
+
+    args = parser.parse_args()
+
+    BASE_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    MIRRORS_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    # Wipe leftovers from previous runs before we start serving.
+    cleanup_stale_mirrors()
+
+    # Verify CotEditor CLI before starting.
+    cot = find_cot()
+
+    print(
+        f"[cotmate] using cot: {cot}",
+        flush=True,
+    )
+
+    server = socket.socket(
+        socket.AF_INET,
+        socket.SOCK_STREAM,
+    )
+
+    server.setsockopt(
+        socket.SOL_SOCKET,
+        socket.SO_REUSEADDR,
+        1,
+    )
+
+    server.bind(
+        (args.host, args.port)
+    )
+
+    server.listen(20)
+
+    # Only claim the pidfile once we're actually serving.  This way a
+    # failed bind cannot leave a stale pidfile behind.
+    if args.pidfile:
+        args.pidfile.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+        args.pidfile.write_text(str(os.getpid()))
+
+    print(
+        f"[cotmate] listening on "
+        f"{args.host}:{args.port}",
+        flush=True,
+    )
+
+    # Convert SIGTERM into KeyboardInterrupt so the finally block runs.
+    def shutdown(signum, frame):
+        print(
+            "[cotmate] received SIGTERM, shutting down",
+            flush=True,
+        )
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, shutdown)
+
+    try:
+
+        while True:
+
+            connection, address = (
+                server.accept()
+            )
+
+            thread = threading.Thread(
+                target=handle_connection,
+                args=(
+                    connection,
+                    address,
+                ),
+                daemon=True,
+            )
+
+            thread.start()
+
+    except KeyboardInterrupt:
+
+        print(
+            "\n[cotmate] shutting down",
+            flush=True,
+        )
+
+    finally:
+
+        try:
+            server.close()
+        except OSError:
+            pass
+
+        if args.pidfile:
+            try:
+                args.pidfile.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError:
+                pass
+
+
+if __name__ == "__main__":
+    main()
