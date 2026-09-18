@@ -13,13 +13,12 @@ locally, save, and the changes go straight back to the remote host.
   when you quit it.
   
 > [!TIP]
-> **You can still use TextMate with rmate as before** - essentialy you can joggle whichever editor you fancy at particular moment
+> **You can still use TextMate with rmate as before** - essentialy you can joggle whichever editor you fancy.
 
 > [!IMPORTANT]
 > It is recommended that only one editor at a time is opened for the same remote file (`52698` port is used).
+>
 > If both TextMate and CotEditor are editing the same remote file, last editor that saves it wins ;)
-
----
 
 ## The _why_ behing the `cotmate`
 
@@ -48,8 +47,6 @@ SSH connection that `rmate` opened.
   /tmp/foo.txt  ◀──────────────  save command
 ```
 
----
-
 ## Requirements
 
 - macOS 12 (Monterey) or later
@@ -59,8 +56,6 @@ SSH connection that `rmate` opened.
   **CotEditor → Help → Install Command Line Tool**, or symlink
   `/Applications/CotEditor.app/Contents/SharedSupport/bin/cot`
   into a directory on your `$PATH`. See official website for [cot](https://coteditor.com/cot)
-
----
 
 ## Install
 
@@ -85,7 +80,7 @@ Then **quit and relaunch CotEditor** and you're done.
 ### Minimal install (no launchd agent)
 
 > [!TIP]
-> Not recommended if you care about simplicity.
+> **Not recommended if you care about simplicity**
 
 If you'd rather not have a background agent then run:
 
@@ -95,8 +90,6 @@ If you'd rather not have a background agent then run:
 
 `cotmate` will then start the first time you open any non-empty document in
 CotEditor, and stop when CotEditor quits
-
----
 
 ## Remote setup
 
@@ -121,8 +114,6 @@ updated. Close the CotEditor window to end the session.
 If you prefer to use the official Ruby `rmate`, that should work too — `cotmate`
 speaks essentialy the same protocol
 
----
-
 ## How it works
 
 - **cotmate** (`bin/cotmate`): a small Python TCP server listening on
@@ -141,8 +132,6 @@ speaks essentialy the same protocol
 - **Hook** (`hooks/CotMateHook.scptd`): fires on `document opened` as a
   secondary trigger, useful when the watcher isn't installed.
 
----
-
 ## Usage notes
 
 - **Same file twice.** If two `rmate` sessions try to open the same
@@ -157,8 +146,6 @@ speaks essentialy the same protocol
 - **Port.** 52698 (the standard `rmate` port). If you need a different
   one, pass `--port` to `cotmate`.
 
----
-
 ## Troubleshooting
 
 See [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md).
@@ -171,8 +158,6 @@ cat ~/Library/Application\ Support/CotMate/cotmate.pid
 tail -50 ~/Library/Application\ Support/CotMate/cotmate.log
 ```
 
----
-
 ## Uninstall
 
 ```sh
@@ -181,8 +166,6 @@ tail -50 ~/Library/Application\ Support/CotMate/cotmate.log
 
 Removes every file `cotmate` installed and unloads the launchd agent. Your
 CotEditor install is untouched.
-
----
 
 ## Credits
 
@@ -193,5 +176,6 @@ CotEditor install is untouched.
 ## License
 
 `cotmate` is released under the MIT License — see [`LICENSE`](LICENSE).
-The bundled `bin/rmate` is licensed under the GNU GPL v3 by its original
-author; see [`vendor/rmate/rmate.LICENSE`](vendor/rmate/rmate.LICENSE) for details.
+
+The bundled `rmate` is licensed under the GNU GPL v3 by its original
+author - see [`rmate.LICENSE`](vendor/rmate/rmate.LICENSE).
