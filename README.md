@@ -1,20 +1,27 @@
-# CotMate
+# cotmate
 
-> rmate-compatible remote editing for CotEditor.
+_**rmate-compatible** remote editing for CotEditor_
 
-CotMate lets you open files on remote servers in your local
+`cotmate` lets you open files on remote servers in your local
 [CotEditor](https://coteditor.com/) — the same way TextMate users have used
 `rmate` for over a decade. Point `rmate` at a file over SSH, edit it
 locally, save, and the changes go straight back to the remote host.
 
-- **No Ruby.** Pure Python server, pure Bash client.
-- **No sudo.** Everything runs as your normal user.
-- **No daemons.** The server starts when CotEditor launches and stops
+- **No Ruby.** `cotmate` is pure Python, [rmate](vendor/rmate/rmate) is pure Bash.
+- **No sudo.** everything runs as your normal user.
+- **No daemons.** `cotmate` starts when CotEditor launches and stops
   when you quit it.
+  
+> [!TIP]
+> **You can still use TextMate with rmate as before** - essentialy you can joggle whichever editor you fancy at particular moment
+
+> [!IMPORTANT]
+> It is recommended that only one editor at a time is opened for the same remote file (`52698` port is used).
+> If both TextMate and CotEditor are editing the same remote file, last editor that saves it wins ;)
 
 ---
 
-## Why
+## The _why_ behing the `cotmate`
 
 TextMate has built-in support for `rmate` — a tiny protocol that lets a
 remote shell tell your local editor to open a file. CotEditor has no such
@@ -26,7 +33,7 @@ SSH connection that `rmate` opened.
 ```
   remote shell                  local Mac
   ────────────                  ─────────
-  rmate /tmp/foo.txt  ──ssh──▶  CotMate :52698
+  rmate /tmp/foo.txt  ──ssh──▶  cotmate :52698
                                       │
                                       ▼
                                 ~/Library/.../mirrors/…
@@ -35,7 +42,7 @@ SSH connection that `rmate` opened.
                                   CotEditor
                                       │
                                       ▼  (on save)
-                                   CotMate
+                                   cotmate
                                       │
                                       ▼
   /tmp/foo.txt  ◀──────────────  save command
@@ -46,30 +53,30 @@ SSH connection that `rmate` opened.
 ## Requirements
 
 - macOS 12 (Monterey) or later
-- [CotEditor 4.x](https://coteditor.com/)
-- Python 3.8+ (the system Python 3 on Monterey is fine)
+- [CotEditor 4.x](https://coteditor.com/) (tested with CotEditor 4.5.9)
+- Python 3.8+ (the system Python 3 shipped with Monterey and higher should be fine)
 - The CotEditor CLI (`cot`). Enable it once via
   **CotEditor → Help → Install Command Line Tool**, or symlink
   `/Applications/CotEditor.app/Contents/SharedSupport/bin/cot`
-  into a directory on your `$PATH`.
+  into a directory on your `$PATH`. See official website for [cot](https://coteditor.com/cot)
 
 ---
 
 ## Install
 
 ```sh
-git clone https://github.com/<you>/cotmate.git
+git clone https://github.com/radekkozak/cotmate.git
 cd cotmate
 ./install.sh
 ```
 
 The installer:
 
-1. Copies the server to `~/.local/bin/cotmate`.
+1. Copies `cotmate` to `~/.local/bin/cotmate`.
 2. Copies the launcher and watcher scripts into
    `~/Library/Application Scripts/com.coteditor.CotEditor/`.
 3. Installs a launchd agent at
-   `~/Library/LaunchAgents/com.cotmate.watcher.plist`.
+   `~/Library/LaunchAgents/com.radekkozak.cotmate.watcher.plist`.
 4. Installs the optional CotEditor hook bundle.
 5. Loads the agent.
 
@@ -77,21 +84,24 @@ Then **quit and relaunch CotEditor** and you're done.
 
 ### Minimal install (no launchd agent)
 
-If you'd rather not have a background agent, run:
+> [!TIP]
+> Not recommended if you care about simplicity.
+
+If you'd rather not have a background agent then run:
 
 ```sh
 ./install.sh --no-launchd
 ```
 
-CotMate will then start the first time you open any document in
-CotEditor, and stop when CotEditor quits.
+`cotmate` will then start the first time you open any non-empty document in
+CotEditor, and stop when CotEditor quits
 
 ---
 
 ## Remote setup
 
-CotMate ships with a pure-Bash `rmate` client so you don't need Ruby on
-your servers:
+`cotmate` ships with a pure-Bash `rmate` client so you don't need Ruby on
+your server:
 
 ```sh
 scp bin/rmate user@server:~/.local/bin/
@@ -102,7 +112,7 @@ Make sure `~/.local/bin` is on your remote `$PATH`. Now, from anywhere on
 the remote host:
 
 ```sh
-rmate /tmp/notes.txt
+rmate test-file.txt
 ```
 
 The file opens in CotEditor on your Mac. Save, and the remote file is
@@ -115,7 +125,7 @@ speaks the same protocol.
 
 ## How it works
 
-- **Server** (`bin/cotmate`): a small Python TCP server listening on
+- **cotmate** (`bin/cotmate`): a small Python TCP server listening on
   `127.0.0.1:52698`. It receives `open`, `save`, and `close` commands
   from `rmate`, writes each remote file into
   `~/Library/Application Support/CotMate/mirrors/<host>/…`, and opens it
@@ -151,12 +161,12 @@ speaks the same protocol.
 
 ## Troubleshooting
 
-See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
+See [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md).
 
 The three commands to run first:
 
 ```sh
-lsof -iTCP:52698 -sTCP:LISTEN                 # is anything listening?
+lsof -iTCP:52698 -sTCP:LISTEN # is anything listening?
 cat ~/Library/Application\ Support/CotMate/cotmate.pid
 tail -50 ~/Library/Application\ Support/CotMate/cotmate.log
 ```
@@ -177,11 +187,11 @@ CotEditor install is untouched.
 ## Credits
 
 - The `rmate` protocol and the bundled Bash client come from
-  [aurora/rmate](https://github.com/aurora/rmate) by Harald Lapp.
-- CotEditor is by 1024jp.
+  [aurora/rmate](https://github.com/aurora/rmate) by [Harald Lapp](https://github.com/aurora).
+- [CotEditor](https://github.com/coteditor/) is by [1024jp](https://github.com/1024jp).
 
 ## License
 
-CotMate is released under the MIT License — see [`LICENSE`](LICENSE).
+`cotmate` is released under the MIT License — see [`LICENSE`](LICENSE).
 The bundled `bin/rmate` is licensed under the GNU GPL v3 by its original
-author; see [`bin/rmate.LICENSE`](bin/rmate.LICENSE) for details.
+author; see [`vendor/rmate/rmate.LICENSE`](vendor/rmate/rmate.LICENSE) for details.
