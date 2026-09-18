@@ -1,5 +1,13 @@
 # Change Log
 
+1.1.0 (latest)
+--------------------------
+
+### Changes installation structure to be more "bundled"
+
+- Change where `cotmate` is installed on the user's macOS system (default is now `~/Library/Application Support/CotMate/bin/cotmate`)
+- Updates `install.sh` and `uninstall.sh` scripts according to new structure
+
 1.0.0
 --------------------------
 
