@@ -2,6 +2,12 @@
 
 All notable changes to `cotmate` are documented here.
 
+## 1.2.1
+
+### Fixed
+
+- a quirk around how official Ruby's version of `rmate` works (adding extra newline after a body)
+
 ## 1.2.0
 
 ### Refactored internal structure
