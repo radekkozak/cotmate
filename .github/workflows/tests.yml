@@ -1,0 +1,38 @@
+name: tests
+
+on:
+    push:
+        branches: [ main ]
+    pull_request:
+    workflow_dispatch:
+
+jobs:
+    test:
+        name: ${{ matrix.label }}
+        runs-on: macos-26
+
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    -   label: system Python 3.9.6
+                        python: /usr/bin/python3
+                    -   label: latest stable Python
+                        python: python3
+                        use_setup: true
+
+        steps:
+            -   name: Check out repository
+                uses: actions/checkout@v7
+
+            -   name: Set up latest stable Python
+                if: matrix.use_setup
+                uses: actions/setup-python@v6
+                with:
+                    python-version: "3.x"
+
+            -   name: Show Python version
+                run: ${{ matrix.python }} --version
+
+            -   name: Run test suite
+                run: ${{ matrix.python }} -m unittest discover -s tests -v
