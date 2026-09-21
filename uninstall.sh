@@ -13,6 +13,7 @@ PLIST_DEST="$LAUNCH_AGENTS/${PLIST_LABEL}.plist"
 SUPPORT_DIR="$HOME/Library/Application Support/CotMate"
 SUPPORT_BIN="$SUPPORT_DIR/bin"
 LOG_DIR="$HOME/Library/Logs"
+LEGACY_BIN="$HOME/.local/bin/cotmate"
 LOCKDIR="/tmp/cotmate-launcher.lock"
 
 echo "CotMate uninstaller"
@@ -49,10 +50,14 @@ fi
 #    reliable check here — pkill patterns miss processes whose argv
 #    doesn't contain the script name.
 if command -v lsof >/dev/null 2>&1; then
-    ORPHANS="$(lsof -tiTCP:52698 -sTCP:LISTEN 2>/dev/null || true)"
-    if [[ -n "$ORPHANS" ]]; then
-        kill $ORPHANS 2>/dev/null || true
-        echo "→ killed orphan listener(s): $ORPHANS"
+    ORPHANS=()
+    while IFS= read -r pid; do
+        [[ -n "$pid" ]] && ORPHANS+=("$pid")
+    done < <(lsof -tiTCP:52698 -sTCP:LISTEN 2>/dev/null || true)
+
+    if (( ${#ORPHANS[@]} )); then
+        kill "${ORPHANS[@]}" 2>/dev/null || true
+        echo "→ killed orphan listener(s): ${ORPHANS[*]}"
     fi
 fi
 
@@ -68,27 +73,27 @@ if [[ -f "$SUPPORT_BIN/cotmate" ]]; then
     echo "→ removed server binary"
 fi
 
-# Legacy cleanup: older CotMate versions installed the server here.
-# Safe to run even if the file doesn't exist.
-if [[ -f "$HOME/.local/bin/cotmate" ]]; then
-    rm -f "$HOME/.local/bin/cotmate"
+# 7. Legacy cleanup: older CotMate versions installed the server to
+#    ~/.local/bin/cotmate.  Remove it if it's still there.
+if [[ -f "$LEGACY_BIN" ]]; then
+    rm -f "$LEGACY_BIN"
     echo "→ removed legacy server binary from ~/.local/bin"
 fi
 
-# 7. Remove runtime state (pid, log, mirrors, bin/).
+# 8. Remove runtime state (pid, log, mirrors, bin/).
 rm -rf "$SUPPORT_DIR"
 echo "→ removed runtime state"
 
-# 8. Remove watcher logs written by launchd.
+# 9. Remove watcher logs written by launchd.
 rm -f "$LOG_DIR/cotmate-watcher.log" "$LOG_DIR/cotmate-watcher.err"
 echo "→ removed watcher logs"
 
-# 9. Clear the launcher lock directory if it was orphaned by a crash.
+# 10. Clear the launcher lock directory if it was orphaned by a crash.
 rmdir "$LOCKDIR" 2>/dev/null || true
 
 echo ""
 echo "Done.  CotEditor is untouched."
 echo ""
-echo "Note: nothing was installed on your remote hosts."
-echo "      If you copied rmate to a server, remove it with:"
+echo "Note: nothing was uninstalled on your remote hosts."
+echo "      If you copied rmate to a server and want to remove it do:"
 echo "          ssh user@server 'rm ~/.local/bin/rmate'"

@@ -13,6 +13,7 @@ APPS_SCRIPTS="$HOME/Library/Application Scripts/com.coteditor.CotEditor"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
 SUPPORT_DIR="$HOME/Library/Application Support/CotMate"
 SUPPORT_BIN="$SUPPORT_DIR/bin"
+LEGACY_BIN="$HOME/.local/bin/cotmate"
 
 PLIST_LABEL="com.radekkozak.cotmate.watcher"
 PLIST_SRC="$REPO_DIR/launchd/${PLIST_LABEL}.plist"
@@ -83,6 +84,15 @@ if ! command -v cot >/dev/null 2>&1; then
         read -r -p "Continue anyway? [y/N] " reply
         [[ "${reply,,}" == "y" ]] || exit 1
     fi
+fi
+
+# --- legacy cleanup ---------------------------------------------------------
+
+# Older CotMate versions installed the server to ~/.local/bin/cotmate.
+# Remove it so upgrades don't leave two copies behind.
+if [[ -f "$LEGACY_BIN" ]]; then
+    echo "→ removing legacy server binary at $LEGACY_BIN"
+    rm -f "$LEGACY_BIN"
 fi
 
 # --- directories ------------------------------------------------------------
