@@ -11,7 +11,7 @@ locally, save, and the changes go straight back to the remote host.
 - **No sudo.** everything runs as your normal user.
 - **No daemons.** `cotmate` starts when CotEditor launches and stops
   when you quit it.
-  
+
 > [!TIP]
 > **You can still use TextMate with rmate as before** - essentialy you can juggle whichever editor you fancy.
 
@@ -50,12 +50,37 @@ SSH connection that `rmate` opened.
 ## Requirements
 
 - macOS 12 (Monterey) or later
-- [CotEditor 4.x](https://coteditor.com/) (tested with CotEditor 4.5.9)
+	- **Maintainer-tested:** macOS 12.7.6 (Monterey) — the developer's
+	  daily driver. Compatibility with this release is verified by hand
+	  before each release.
+	- **CI-tested:** macOS 26 (Tahoe), arm64. GitHub retired all runners
+	  older than macOS 14, so Monterey compatibility rests on the code's
+	  conservative design (stdlib only, Python 3.9.6 syntax) plus manual
+	  testing, not on automated CI.
+- [CotEditor 4.x](https://coteditor.com/) — tested with 4.5.9 (575), the last release supporting macOS 12 Monterey
 - Python 3.9+ (usually provided via Xcode Command Line Tools but you can install via `mise` or some other tools)
-- The CotEditor CLI (`cot`). Enable it once via
-  **CotEditor → Help → Install Command Line Tool**, or symlink
-  `/Applications/CotEditor.app/Contents/SharedSupport/bin/cot`
-  into a directory on your `$PATH`. See official website for [cot](https://coteditor.com/cot)
+- The CotEditor CLI (`cot`). See official website for [how to install cot cli](https://coteditor.com/cot)
+
+### How CotMate chooses a Python interpreter
+
+The launcher runs `python3` from `PATH`. Under launchd, `PATH` is
+minimal (`/usr/bin:/bin:/usr/sbin:/sbin`), so `python3` always
+resolves to `/usr/bin/python3` — the system Python 3.9.6 that ships
+with the Xcode Command Line Tools. That's intentional: it's the same
+interpreter on every Mac, and it satisfies CotMate's 3.9+ requirement.
+
+If you want CotMate to use a different interpreter (Homebrew, mise,
+pyenv, uv, MacPorts, python.org), set `COTMATE_PYTHON`:
+
+    export COTMATE_PYTHON=/opt/homebrew/bin/python3.13
+
+and reload the launchd agent:
+
+    launchctl unload ~/Library/LaunchAgents/com.radekkozak.cotmate.watcher.plist
+    launchctl load   ~/Library/LaunchAgents/com.radekkozak.cotmate.watcher.plist
+
+Alternatively, add the variable to the plist's `EnvironmentVariables`
+dict so it applies every time the agent starts.
 
 ## Install
 
@@ -64,6 +89,11 @@ git clone https://github.com/radekkozak/cotmate.git
 cd cotmate
 ./install.sh
 ```
+
+> [!IMPORTANT]
+> If `./install.sh` fails with "permission denied", it probably means the executable bit
+> didn't survive the checkout. Run `chmod +x install.sh uninstall.sh scripts/*.sh`
+> and retry, or invoke it as `bash install.sh`.
 
 The installer:
 
