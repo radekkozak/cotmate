@@ -1,24 +1,38 @@
-# cotmate
+<div id="toc">
+  <ul align="center" style="list-style: none">
+    <summary>
+      	<h1>cotmate</h1><br/>
+		<h2>remote editing for CotEditor</h2>
+	</summary>
+  </ul>
+</div>
 
-_**rmate-compatible** remote editing for CotEditor_
+## About
 
 `cotmate` lets you open and edit files on remote servers via SSH session in
 [CotEditor](https://coteditor.com/) — the same way TextMate users have used
-`rmate` for over a decade. Point `rmate` at a file over SSH, edit it
-locally, save, and the changes go straight back to the remote host.
+`rmate` for over a decade. It's ***rmate-compatible*** which means you can point 
+`rmate` at a file over SSH, edit it locally, save, and the changes 
+go straight back to the remote host.
 
 - **No Ruby.** `cotmate` is pure Python, [rmate](vendor/rmate/rmate) is pure Bash.
 - **No sudo.** everything runs as your normal user.
 - **No daemons.** `cotmate` starts when CotEditor launches and stops
   when you quit it.
 
+<br/>
+
 > [!TIP]
 > **You can still use TextMate with rmate as before** - essentialy you can juggle whichever editor you fancy.
+
+<br/>
 
 > [!IMPORTANT]
 > It is recommended that only one editor at a time is opened for the same remote file (`52698` port is used).
 >
 > If both TextMate and CotEditor are editing the same remote file, last editor that saves the file wins ;)
+
+<br/>
 
 ## The _why_ behind the `cotmate`
 
@@ -27,7 +41,7 @@ remote shell tell your local editor to open a file. CotEditor has no such
 support. `cotmate` bridges that gap: it listens on the standard `rmate` port
 (52698), materialises remote files as local mirrors, opens them in
 CotEditor, and streams your saves back to the remote host over the same
-SSH connection that `rmate` opened.
+SSH connection that `rmate` opened.<br/>
 
 ```
   remote shell                  local Mac
@@ -61,7 +75,7 @@ SSH connection that `rmate` opened.
 - Python 3.9+ (usually provided via Xcode Command Line Tools but you can install via `mise` or some other tools)
 - The CotEditor CLI (`cot`). See official website for [how to install cot cli](https://coteditor.com/cot)
 
-### How CotMate chooses a Python interpreter
+### How `cotmate` chooses a Python interpreter
 
 The launcher runs `python3` from `PATH`. Under launchd, `PATH` is
 minimal (`/usr/bin:/bin:/usr/sbin:/sbin`), so `python3` always
@@ -95,6 +109,8 @@ cd cotmate
 > didn't survive the checkout. Run `chmod +x install.sh uninstall.sh scripts/*.sh`
 > and retry, or invoke it as `bash install.sh`.
 
+<br/>
+
 The installer:
 
 1. Copies `cotmate` to `~/Library/Application Support/CotMate/bin/cotmate`.
@@ -111,6 +127,8 @@ Then **quit and relaunch CotEditor** and you're done.
 
 > [!TIP]
 > **Not recommended if you care about simplicity**
+
+<br/>
 
 If you'd rather not have a background agent then run:
 
@@ -154,13 +172,13 @@ speaks essentialy the same protocol
   in CotEditor via the `cot` CLI. A polling thread watches each mirror
   for changes and sends `save` commands back over the originating
   connection.
-- **Launcher** (`scripts/cotmate-launcher.sh`): starts the server if it
+- **launcher** (`scripts/cotmate-launcher.sh`): starts the server if it
   isn't already running, and spawns a watchdog that kills it when
   CotEditor quits.
-- **Watcher** (`scripts/cotmate-watcher.sh`): a tiny launchd-managed
+- **watcher** (`scripts/cotmate-watcher.sh`): a tiny launchd-managed
   script that notices whenever CotEditor is launched and calls the
   launcher.
-- **Hook** (`hooks/CotMateHook.scptd`): fires on `document opened` as a
+- **CotEditor hook** (`hooks/CotMateHook.scptd`): fires on `document opened` as a
   secondary trigger, useful when the watcher isn't installed.
 
 ## Usage notes
