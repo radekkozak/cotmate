@@ -40,7 +40,7 @@ from typing import Dict, Optional, Tuple
 # Version
 # ---------------------------------------------------------------------------
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -672,8 +672,9 @@ class Session:
             headers: Dict[str, str],
             body: bytes,
     ) -> None:
-        if command == ".":
-            # Handshake separator; nothing to do.
+        if command == "." or command == "":
+            # Handshake separator, or the harmless extra newline
+            # that the official Ruby rmate appends after a body.
             return
 
         if command == "open":
