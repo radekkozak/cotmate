@@ -3,7 +3,19 @@ name: tests
 on:
     push:
         branches: [ main ]
+        paths-ignore:
+            - '**.md'
+            - 'LICENSE'
+            - 'NOTICE'
+            - '.gitignore'
+            - '.github/**'
     pull_request:
+        paths-ignore:
+            - '**.md'
+            - 'LICENSE'
+            - 'NOTICE'
+            - '.gitignore'
+            - '.github/**'
     workflow_dispatch:
 
 jobs:
