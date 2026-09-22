@@ -15,6 +15,11 @@ class FakeDoc:
 
     def __init__(self):
         self.closed = False
+        self.close_notify_remote = None
+
+    def close(self, notify_remote: bool = True) -> None:
+        self.closed = True
+        self.close_notify_remote = notify_remote
 
 
 class TestDocumentRegistry(unittest.TestCase):
@@ -98,32 +103,66 @@ class SessionTestCase(unittest.TestCase):
         }
 
 
+# noinspection unresolved-references,DuplicatedCode
 class TestDuplicateOpen(SessionTestCase):
 
-    def test_second_open_same_path_gets_close(self):
+    def test_second_open_replaces_first(self):
+        """A newer open of the same path takes over from an older one."""
         key = ("host", "/tmp/foo.txt")
-        self.registry.try_register(key, FakeDoc())
+        first = FakeDoc()
+        self.registry.try_register(key, first)
 
-        self.session.handle_command(
-            "open", self.open_headers("/tmp/foo.txt"), b"hello"
-        )
+        with mock.patch.object(
+                cotmate, "find_cot", return_value="/fake/cot"
+        ), mock.patch("subprocess.Popen"):
+            self.session.handle_command(
+                "open", self.open_headers("/tmp/foo.txt"), b"hello"
+            )
 
-        self.client.settimeout(1.0)
-        response = self.client.recv(4096)
+        # The first doc was closed.
+        self.assertTrue(first.closed)
 
-        self.assertIn(b"close", response)
-        self.assertIn(b"token: /tmp/foo.txt", response)
+        # A new doc is now registered under the same key.
+        second = self.registry.lookup(key)
+        self.assertIsNotNone(second)
+        self.assertIsNot(first, second)
 
-    def test_second_open_does_not_write_mirror_file(self):
+    def test_second_open_notifies_old_client(self):
+        """Takeover calls close(notify_remote=True) so the old client exits.
+
+        If we called close(notify_remote=False), the old rmate client
+        would hang forever waiting for a message that never comes.
+        """
         key = ("host", "/tmp/foo.txt")
-        self.registry.try_register(key, FakeDoc())
+        first = FakeDoc()
+        self.registry.try_register(key, first)
 
-        self.session.handle_command(
-            "open", self.open_headers("/tmp/foo.txt"), b"hello"
-        )
+        with mock.patch.object(
+                cotmate, "find_cot", return_value="/fake/cot"
+        ), mock.patch("subprocess.Popen"):
+            self.session.handle_command(
+                "open", self.open_headers("/tmp/foo.txt"), b"hello"
+            )
+
+        self.assertTrue(first.closed)
+        self.assertTrue(first.close_notify_remote)
+
+    def test_second_open_writes_mirror_file(self):
+        """The takeover creates the mirror file for the new session."""
+        key = ("host", "/tmp/foo.txt")
+        first = FakeDoc()
+        self.registry.try_register(key, first)
+
+        with mock.patch.object(
+                cotmate, "find_cot", return_value="/fake/cot"
+        ), mock.patch("subprocess.Popen"):
+            self.session.handle_command(
+                "open", self.open_headers("/tmp/foo.txt"), b"hello"
+            )
 
         mirror = self.config.mirrors_dir / "host" / "tmp" / "foo.txt"
-        self.assertFalse(mirror.exists())
+        self.assertTrue(mirror.exists())
+        self.assertEqual(mirror.read_bytes(), b"hello")
 
     def test_open_with_different_path_is_accepted(self):
         key = ("host", "/tmp/foo.txt")
@@ -142,7 +181,9 @@ class TestDuplicateOpen(SessionTestCase):
             self.client.recv(4096)
 
         # The new doc is registered.
-        self.assertIsNotNone(self.registry.lookup(("host", "/tmp/other.txt")))
+        self.assertIsNotNone(
+            self.registry.lookup(("host", "/tmp/other.txt"))
+        )
 
 
 class TestSessionDispatch(SessionTestCase):

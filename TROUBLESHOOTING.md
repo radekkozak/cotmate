@@ -129,15 +129,29 @@ Check `rmate` is running in **wait mode**:
 Without `-w`, the client backgrounds itself and can be killed by SIGHUP
 when the SSH session ends.
 
-### Second `rmate` on the same file is rejected
+### Reopening a file after closing its CotEditor window
 
-This is intentional. `cotmate` refuses to open the same remote path twice
-concurrently, because two CotEditor windows writing back to one remote
-file is last-writer-wins. Look for this line in the log:
+If you close a file in CotEditor but leave the editor and your SSH
+session open, running `rmate` on the same remote path again will
+reopen it.  The newer `rmate` session takes over from the older one:
+the previous client receives `close` and exits, its mirror is
+unlinked, and a fresh session is started.
+
+You'll see this in the log when it happens:
+
+    [cotmate] replacing previous session for host:/path/to/file
+
+This matches the behaviour of TextMate's rmate and most editors.
+It also means a file you closed in CotEditor can always be reopened
+from the remote without quitting and relaunching anything.
+
+If two `rmate` sessions arrive for the same file within the same
+millisecond, one of them is still rejected as a duplicate — this is
+a race guard, and it's normal.  You'll see:
 
     [cotmate] rejected duplicate open of host:/path/to/file (already open)
 
-Close the first window, then re-run `rmate`.
+Simply run `rmate` again; the takeover will succeed.
 
 ### `rmate` is not installed on the remote host
 

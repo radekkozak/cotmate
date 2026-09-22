@@ -40,7 +40,7 @@ from typing import Dict, Optional, Tuple
 # Version
 # ---------------------------------------------------------------------------
 
-__version__ = "1.2.1"
+__version__ = "1.2.2"
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -705,20 +705,26 @@ class Session:
 
         line, column = self._parse_selection(headers.get("selection"))
 
-        # Replace any existing doc under the same token on this
-        # connection.
+        # Replace any existing doc under the same token on this connection.
         old_document = self.documents.pop(token, None)
         if old_document:
             old_document.close(notify_remote=False)
 
         key = (safe_host_name(display_name), real_path)
 
-        # Fast-path duplicate rejection: someone else already has
-        # this path open.
+        # If another session already has this path open, close it
+        # before proceeding. This handles the common case where the
+        # user closed the CotEditor window for a file but CotEditor is open
+        # and original rmate session is still connected — without this,
+        # the second open would be rejected and the file would never reappear.
         existing = self.registry.lookup(key)
         if existing is not None and not existing.closed:
-            self._reject_duplicate(token, display_name)
-            return
+            print(
+                f"[cotmate] replacing previous session for "
+                f"{display_name}",
+                flush=True,
+            )
+            existing.close(notify_remote=True)
 
         document = RemoteDocument(
             connection=self.connection,
@@ -733,9 +739,9 @@ class Session:
             column=column,
         )
 
-        # Race-free registration.  If a concurrent session slipped in
-        # between our lookup and here, try_register fails and we back
-        # out cleanly.
+        # Race-free registration.  In the rare case another session
+        # slipped in between lookup() and here, fall back to the
+        # old rejection behaviour.
         if not self.registry.try_register(key, document):
             document.close(notify_remote=False)
             self._reject_duplicate(token, display_name)
@@ -950,7 +956,7 @@ def main() -> None:
         flush=True,
     )
 
-    # noinspection PyUnusedLocal
+    # noinspection PyUnusedLocal,unused-parameter
     def shutdown(signum, frame):
         print("[cotmate] received SIGTERM, shutting down", flush=True)
         raise KeyboardInterrupt

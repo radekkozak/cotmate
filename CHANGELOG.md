@@ -2,6 +2,21 @@
 
 All notable changes to `cotmate` are documented here.
 
+## 1.2.2
+--------------------------
+
+### Fixed
+
+- Reopening a remote file after closing its CotEditor window no
+  longer fails with "rejected duplicate open". The newer `rmate`
+  session now takes over from the older one: the previous client
+  receives `close`, its mirror is unlinked, and a fresh session is
+  started. This matches the behaviour of TextMate's rmate.
+
+  The rejection path is retained as a fallback for the rare case
+  where two sessions race within the same millisecond, so nothing
+  regresses.
+
 ## 1.2.1
 
 ### Fixed
