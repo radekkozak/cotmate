@@ -6,6 +6,11 @@
 	</summary>
   </ul>
 </div>
+<p align="center">
+	<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/radekkozak/cotmate/tests.yml?branch=main&style=flat-square">
+	<img alt="GitHub License" src="https://img.shields.io/github/license/radekkozak/cotmate?style=flat-square">
+	<img alt="GitHub Release" src="https://img.shields.io/github/v/release/radekkozak/cotmate?style=flat-square">
+</p><br/>
 
 ## About
 
@@ -72,7 +77,7 @@ SSH connection that `rmate` opened.<br/>
 	  older than macOS 14, so Monterey compatibility rests on the code's
 	  conservative design (stdlib only, Python 3.9.6 syntax) plus manual
 	  testing - not on automated CI.
-- [CotEditor 4.x](https://coteditor.com/) — tested with 4.5.9 (575), the last release supporting macOS 12 Monterey
+- CotEditor 4.5.9 or later — tested with 4.5.9 (575), the last release supporting macOS 12 Monterey
 - Python 3.9+ (usually provided via Xcode Command Line Tools but you can install via `mise` or some other tools)
 - The CotEditor CLI (`cot`). See official website for [how to install cot cli](https://coteditor.com/cot)
 
