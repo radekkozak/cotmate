@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 #
-# CotMate uninstaller
+# cotmate uninstaller
 # Removes everything install.sh added.  CotEditor itself is untouched.
 #
-# No set -e: this is a cleanup script and should push through failures.
 set -uo pipefail
 
 APPS_SCRIPTS="$HOME/Library/Application Scripts/com.coteditor.CotEditor"
@@ -16,84 +15,113 @@ LOG_DIR="$HOME/Library/Logs"
 LEGACY_BIN="$HOME/.local/bin/cotmate"
 LOCKDIR="/tmp/cotmate-launcher.lock"
 
-echo "CotMate uninstaller"
-echo "───────────────────"
+# --- color handling ---------------------------------------------------------
 
-# 1. Unload the launchd agent (this stops the watcher).
+if [[ -t 1 ]] && command -v tput >/dev/null 2>&1; then
+    BOLD="$(tput bold)"
+    DIM="$(tput dim)"
+    RED="$(tput setaf 1)"
+    GREEN="$(tput setaf 2)"
+    YELLOW="$(tput setaf 3)"
+    BLUE="$(tput setaf 4)"
+    RESET="$(tput sgr0)"
+else
+    BOLD="" DIM="" RED="" GREEN="" YELLOW="" BLUE="" RESET=""
+fi
+
+info()    { printf '%s🔄%s %s\n' "$BLUE" "$RESET" "$*"; }
+success() { printf '%s✅%s %s\n' "$GREEN" "$RESET" "$*"; }
+warn()    { printf '%s⚠️%s %s\n' "$YELLOW" "$RESET" "$*" >&2; }
+
+# --- banner -----------------------------------------------------------------
+
+printf '\n%s cotmate uninstaller %s\n\n' "$BOLD" "$RESET"
+
+# --- 1. unload launchd agent ------------------------------------------------
+
 if [[ -f "$PLIST_DEST" ]]; then
     launchctl unload "$PLIST_DEST" 2>/dev/null || true
     rm -f "$PLIST_DEST"
-    echo "→ removed launchd agent"
+    success "Removed launchd agent"
 fi
 
-# 2. Kill any stray watcher (launchd KeepAlive can leave stragglers
-#    if unload didn't finish before we removed the plist).
+# --- 2. kill stray watcher --------------------------------------------------
+
 pkill -f "cotmate-watcher.sh" 2>/dev/null || true
 
-# 3. Stop the running server gracefully via its pid file.
+# --- 3. stop server via pidfile ---------------------------------------------
+
 if [[ -f "$SUPPORT_DIR/cotmate.pid" ]]; then
-    SERVER_PID="$(cat "$SUPPORT_DIR/cotmate.pid" 2>/dev/null || true)"
-    if [[ -n "$SERVER_PID" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
-        kill "$SERVER_PID" 2>/dev/null || true
+    COTMATE_PID="$(cat "$SUPPORT_DIR/cotmate.pid" 2>/dev/null || true)"
+    if [[ -n "$COTMATE_PID" ]] && kill -0 "$COTMATE_PID" 2>/dev/null; then
+        kill "$COTMATE_PID" 2>/dev/null || true
         for _ in 1 2 3 4 5; do
-            kill -0 "$SERVER_PID" 2>/dev/null || break
+            kill -0 "$COTMATE_PID" 2>/dev/null || break
             sleep 0.2
         done
-        if kill -0 "$SERVER_PID" 2>/dev/null; then
-            kill -9 "$SERVER_PID" 2>/dev/null || true
-        fi
-        echo "→ stopped server (PID $SERVER_PID)"
+        kill -9 "$COTMATE_PID" 2>/dev/null || true
+        success "Stopped cotmate (PID $COTMATE_PID)"
     fi
 fi
 
-# 4. Catch any orphan listening on the rmate port.  lsof is the only
-#    reliable check here — pkill patterns miss processes whose argv
-#    doesn't contain the script name.
+# --- 4. kill orphans on port 52698 ------------------------------------------
+
 if command -v lsof >/dev/null 2>&1; then
     ORPHANS=()
     while IFS= read -r pid; do
         [[ -n "$pid" ]] && ORPHANS+=("$pid")
     done < <(lsof -tiTCP:52698 -sTCP:LISTEN 2>/dev/null || true)
-
     if (( ${#ORPHANS[@]} )); then
         kill "${ORPHANS[@]}" 2>/dev/null || true
-        echo "→ killed orphan listener(s): ${ORPHANS[*]}"
+        success "Killed orphan listener(s): ${ORPHANS[*]}"
     fi
 fi
 
-# 5. Remove installed scripts and hook.
+# --- 5. remove scripts and hook ---------------------------------------------
+
 rm -f  "$APPS_SCRIPTS/cotmate-launcher.sh"
 rm -f  "$APPS_SCRIPTS/cotmate-watcher.sh"
 rm -rf "$APPS_SCRIPTS/CotMateHook.scptd"
-echo "→ removed scripts and hook"
+success "Removed scripts and hook"
 
-# 6. Remove the server binary from its application-support home.
+# --- 6. remove server binary ------------------------------------------------
+
 if [[ -f "$SUPPORT_BIN/cotmate" ]]; then
     rm -f "$SUPPORT_BIN/cotmate"
-    echo "→ removed server binary"
+    success "Removed cotmate binary"
 fi
 
-# 7. Legacy cleanup: older CotMate versions installed the server to
-#    ~/.local/bin/cotmate.  Remove it if it's still there.
+# --- 7. legacy cleanup ------------------------------------------------------
+
 if [[ -f "$LEGACY_BIN" ]]; then
     rm -f "$LEGACY_BIN"
-    echo "→ removed legacy server binary from ~/.local/bin"
+    success "Removed legacy binary from ~/.local/bin"
 fi
 
-# 8. Remove runtime state (pid, log, mirrors, bin/).
+# --- 8. remove runtime state ------------------------------------------------
+
 rm -rf "$SUPPORT_DIR"
-echo "→ removed runtime state"
+success "Removed runtime state"
 
-# 9. Remove watcher logs written by launchd.
+# --- 9. remove watcher logs -------------------------------------------------
+
 rm -f "$LOG_DIR/cotmate-watcher.log" "$LOG_DIR/cotmate-watcher.err"
-echo "→ removed watcher logs"
+success "Removed watcher logs"
 
-# 10. Clear the launcher lock directory if it was orphaned by a crash.
+# --- 10. clear lock ---------------------------------------------------------
+
 rmdir "$LOCKDIR" 2>/dev/null || true
 
-echo ""
-echo "Done.  CotEditor is untouched."
-echo ""
-echo "Note: nothing was uninstalled on your remote hosts."
-echo "      If you copied rmate to a server and want to remove it do:"
-echo "          ssh user@server 'rm ~/.local/bin/rmate'"
+# --- done -------------------------------------------------------------------
+
+printf '\n%s────────────────────────────────────────────────────────────%s\n' "$DIM" "$RESET"
+printf '%s cotmate uninstalled %s\n' "$BOLD$GREEN" "$RESET"
+printf '%s────────────────────────────────────────────────────────────%s\n\n' "$DIM" "$RESET"
+
+echo "  CotEditor is untouched."
+echo
+echo "  Note: nothing was uninstalled on your remote hosts."
+echo "  If you copied rmate to a server and want to remove it, run:"
+echo
+echo "      ssh user@server 'rm ~/.local/bin/rmate'"
+echo
