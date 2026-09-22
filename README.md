@@ -9,9 +9,9 @@
 
 ## About
 
-`cotmate` lets you open and edit files on remote servers via SSH session in
+`cotmate` is CotEditor's best mate. It lets you open and edit files on remote servers via SSH session in
 [CotEditor](https://coteditor.com/) — the same way TextMate users have used
-`rmate` for over a decade. It's ***rmate-compatible*** which means you can point 
+`rmate` for over a decade. `cotmate` is ***rmate-compatible*** which means you can point 
 `rmate` at a file over SSH, edit it locally, save, and the changes 
 go straight back to the remote host.
 
@@ -24,6 +24,9 @@ go straight back to the remote host.
 
 > [!TIP]
 > **You can still use TextMate with rmate as before** - essentialy you can juggle whichever editor you fancy.
+>
+> If you prefer to use the official Ruby version of `rmate` that should work too — `cotmate`
+> speaks essentialy the same protocol
 
 <br/>
 
@@ -49,7 +52,7 @@ SSH connection that `rmate` opened.<br/>
   rmate /tmp/foo.txt  ──ssh──▶  cotmate :52698
                                       │
                                       ▼
-                                ~/Library/.../mirrors/…
+                                ~/Library/.../CotMate/mirrors/…
                                       │
                                       ▼
                                   CotEditor
@@ -64,37 +67,14 @@ SSH connection that `rmate` opened.<br/>
 ## Requirements
 
 - macOS 12 (Monterey) or later
-	- **Maintainer-tested:** macOS 12.7.6 (Monterey) — the developer's
-	  daily driver. Compatibility with this release is verified by hand
-	  before each release.
+	- **Maintainer-tested:** macOS 12.7.6 (Monterey) — yes, this is still my daily driver in 2026 - brilliant macOS version in my opinion (and it works amazingly great even on my maxed-out, rusty but trusty, MBP Pro Mid 2012). Compatibility with this release is verified by hand before each release.
 	- **CI-tested:** macOS 26 (Tahoe), arm64. GitHub retired all runners
 	  older than macOS 14, so Monterey compatibility rests on the code's
 	  conservative design (stdlib only, Python 3.9.6 syntax) plus manual
-	  testing, not on automated CI.
+	  testing - not on automated CI.
 - [CotEditor 4.x](https://coteditor.com/) — tested with 4.5.9 (575), the last release supporting macOS 12 Monterey
 - Python 3.9+ (usually provided via Xcode Command Line Tools but you can install via `mise` or some other tools)
 - The CotEditor CLI (`cot`). See official website for [how to install cot cli](https://coteditor.com/cot)
-
-### How `cotmate` chooses a Python interpreter
-
-The launcher runs `python3` from `PATH`. Under launchd, `PATH` is
-minimal (`/usr/bin:/bin:/usr/sbin:/sbin`), so `python3` always
-resolves to `/usr/bin/python3` — the system Python 3.9.6 that ships
-with the Xcode Command Line Tools. That's intentional: it's the same
-interpreter on every Mac, and it satisfies CotMate's 3.9+ requirement.
-
-If you want CotMate to use a different interpreter (Homebrew, mise,
-pyenv, uv, MacPorts, python.org), set `COTMATE_PYTHON`:
-
-    export COTMATE_PYTHON=/opt/homebrew/bin/python3.13
-
-and reload the launchd agent:
-
-    launchctl unload ~/Library/LaunchAgents/com.radekkozak.cotmate.watcher.plist
-    launchctl load   ~/Library/LaunchAgents/com.radekkozak.cotmate.watcher.plist
-
-Alternatively, add the variable to the plist's `EnvironmentVariables`
-dict so it applies every time the agent starts.
 
 ## Install
 
@@ -111,7 +91,9 @@ cd cotmate
 
 <br/>
 
-The installer:
+After that you should be up and running. Just **quit and relaunch CotEditor** and you're done.
+
+What does the installer do:
 
 1. Copies `cotmate` to `~/Library/Application Support/CotMate/bin/cotmate`.
 2. Copies the launcher and watcher scripts into
@@ -121,14 +103,7 @@ The installer:
 4. Installs the optional CotEditor hook bundle.
 5. Loads the agent.
 
-Then **quit and relaunch CotEditor** and you're done.
-
 ### Minimal install (no launchd agent)
-
-> [!TIP]
-> **Not recommended if you care about simplicity**
-
-<br/>
 
 If you'd rather not have a background agent then run:
 
@@ -136,8 +111,14 @@ If you'd rather not have a background agent then run:
 ./install.sh --no-launchd
 ```
 
-`cotmate` will then start the first time you open any non-empty document in
-CotEditor, and stop when CotEditor quits
+> [!TIP]
+> **Not recommended if you care about simplicity**
+>
+> In this scenario `cotmate` will start and listen for a remote connection from `rmate`
+> **only when you open any non-empty document** in CotEditor and stop when CotEditor quits.
+> The "non-empty document" is required because CotEditor doesn't offer a hook into its
+> own lifecycle (namely we cannot hook into when CotEditor is launched) - only into
+> `document opened` and `document saved` events. 
 
 ## Remote setup
 
@@ -214,6 +195,16 @@ tail -50 ~/Library/Application\ Support/CotMate/cotmate.log
 
 Removes every file `cotmate` installed and unloads the launchd agent. Your
 CotEditor install is untouched.
+
+## Contributing
+
+If you happen to use [CotEditor](https://coteditor.com/) daily on your macOS and be so nice and willing to test `cotmate` in real-life scenarios on your machine it would be greatly appreciated. I cannot own every MacBook machine out there (duh) and have every macOS system installed to be 100% sure, and CI testing on Github can offer certainty only to a point of running some unit tests and checks. 
+
+If you find any problem do not hesitate to open an [ISSUE](https://github.com/radekkozak/cotmate/issues/new). 
+
+If you would like to contribute code you can do so through GitHub by forking the repository and sending a pull request.
+
+When submitting code, please make every effort to follow existing conventions and style in order to keep the code as readable as possible. Please also make sure your code compiles and passes all tests by running `python3 -m unittest discover -s tests -v` locally before submitting. 
 
 ## Credits
 
