@@ -41,7 +41,7 @@ printf '\n%s cotmate uninstaller %s\n\n' "$BOLD" "$RESET"
 # --- 1. unload launchd agent ------------------------------------------------
 
 if [[ -f "$PLIST_DEST" ]]; then
-    launchctl unload "$PLIST_DEST" 2>/dev/null || true
+    launchctl bootout "gui/$(id -u)/$PLIST_LABEL" 2>/dev/null || true
     rm -f "$PLIST_DEST"
     success "Removed launchd agent"
 fi

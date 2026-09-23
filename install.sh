@@ -175,8 +175,8 @@ success "CotEditor hook installed"
 if [[ $INSTALL_LAUNCHD -eq 1 ]]; then
     #info "Installing launchd agent"
     sed "s|__HOME__|$HOME|g" "$PLIST_SRC" > "$PLIST_DEST"
-    launchctl unload "$PLIST_DEST" 2>/dev/null || true
-    launchctl load   "$PLIST_DEST"
+    launchctl bootout "gui/$(id -u)/$PLIST_LABEL" 2>/dev/null || true
+    launchctl bootstrap "gui/$(id -u)" "$PLIST_DEST"
     success "Agent installed and loaded"
 fi
 

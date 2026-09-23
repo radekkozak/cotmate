@@ -2,7 +2,16 @@
 
 All notable changes to `cotmate` are documented here.
 
-## 1.3.0 
+## 1.3.1
+
+### Fixed
+
+- `install.sh` / `uninstall.sh`: replaced deprecated `launchctl
+  load`/`unload` with the modern `launchctl bootstrap`/`bootout`
+  API. The legacy commands were removed in macOS Monterey 12.3 and
+  could fail silently on newer systems.
+
+## 1.3.0
 
 ### Changed
 
