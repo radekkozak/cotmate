@@ -4,8 +4,9 @@
 # start CotMate. Whenever CotEditor quits, the launcher's own
 # watchdog already handles killing the server.
 
-LAUNCHER="$HOME/Library/Application Scripts/com.coteditor.CotEditor/cotmate-launcher.sh"
-
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+#LAUNCHER="$HOME/Library/Application Scripts/com.coteditor.CotEditor/CotMate/cotmate-launcher.sh"
+LAUNCHER="$SCRIPT_DIR/cotmate-launcher.sh"
 was_running=0
 
 while true; do

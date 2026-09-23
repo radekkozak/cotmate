@@ -24,6 +24,7 @@ fi
 # --- destinations -----------------------------------------------------------
 
 APPS_SCRIPTS="$HOME/Library/Application Scripts/com.coteditor.CotEditor"
+COTMATE_DIR="$APPS_SCRIPTS/CotMate"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
 SUPPORT_DIR="$HOME/Library/Application Support/CotMate"
 SUPPORT_BIN="$SUPPORT_DIR/bin"
@@ -78,8 +79,6 @@ if ! "$PYTHON_BIN" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else
 fi
 success "Python $PYVER"
 
-# --- cot CLI check ----------------------------------------------------------
-
 # --- CotEditor / cot CLI check ----------------------------------------------
 
 COT_APP="/Applications/CotEditor.app/Contents/SharedSupport/bin/cot"
@@ -123,9 +122,23 @@ if [[ -f "$LEGACY_BIN" ]]; then
     rm -f "$LEGACY_BIN"
 fi
 
+# Remove files from a previous (flat) install inside the CotEditor scripts dir.
+if [[ -f "$APPS_SCRIPTS/cotmate-launcher.sh" ]]; then
+    info "Removing legacy cotmate-launcher.sh from scripts root"
+    rm -f "$APPS_SCRIPTS/cotmate-launcher.sh"
+fi
+if [[ -f "$APPS_SCRIPTS/cotmate-watcher.sh" ]]; then
+    info "Removing legacy cotmate-watcher.sh from scripts root"
+    rm -f "$APPS_SCRIPTS/cotmate-watcher.sh"
+fi
+if [[ -d "$APPS_SCRIPTS/CotMateHook.scptd" ]]; then
+    info "Removing legacy CotMateHook.scptd from scripts root"
+    rm -rf "$APPS_SCRIPTS/CotMateHook.scptd"
+fi
+
 # --- directories ------------------------------------------------------------
 
-mkdir -p "$APPS_SCRIPTS" "$LAUNCH_AGENTS" "$SUPPORT_BIN"
+mkdir -p "$APPS_SCRIPTS" "$COTMATE_DIR" "$LAUNCH_AGENTS" "$SUPPORT_BIN"
 
 # --- cotmate -----------------------------------------------------------------
 
@@ -136,11 +149,11 @@ success "cotmate installed"
 # --- launcher + watcher -----------------------------------------------------
 
 install -m 0755 "$REPO_DIR/scripts/cotmate-launcher.sh" \
-    "$APPS_SCRIPTS/cotmate-launcher.sh"
+    "$COTMATE_DIR/cotmate-launcher.sh"
 
 if [[ $INSTALL_LAUNCHD -eq 1 ]]; then
     install -m 0755 "$REPO_DIR/scripts/cotmate-watcher.sh" \
-        "$APPS_SCRIPTS/cotmate-watcher.sh"
+        "$COTMATE_DIR/cotmate-watcher.sh"
     success "Launcher and watcher installed"
 else
     success "Launcher installed"
@@ -148,7 +161,7 @@ fi
 
 # --- hook -------------------------------------------------------------------
 
-HOOK_DEST="$APPS_SCRIPTS/CotMateHook.scptd"
+HOOK_DEST="$COTMATE_DIR/CotMateHook.scptd"
 if [[ -d "$HOOK_DEST" ]]; then
     #info "Refreshing existing CotEditor hook"
     rm -rf "$HOOK_DEST"
@@ -173,12 +186,12 @@ printf '\n%s──────────────────────�
 printf '%s cotmate installed successfully %s\n' "$BOLD$GREEN" "$RESET"
 printf '%s────────────────────────────────────────────────────────────%s\n\n' "$DIM" "$RESET"
 
-printf '  %scotmate%s     %s\n' "$BOLD" "$RESET" "$SUPPORT_BIN/cotmate"
-printf '  %slauncher%s   %s\n' "$BOLD" "$RESET" "$APPS_SCRIPTS/cotmate-launcher.sh"
+printf '  %scotmate%s    %s\n' "$BOLD" "$RESET" "$SUPPORT_BIN/cotmate"
+printf '  %slauncher%s   %s\n' "$BOLD" "$RESET" "$COTMATE_DIR/cotmate-launcher.sh"
 printf '  %shook%s       %s\n' "$BOLD" "$RESET" "$HOOK_DEST"
 
 if [[ $INSTALL_LAUNCHD -eq 1 ]]; then
-    printf '  %swatcher%s    %s\n' "$BOLD" "$RESET" "$APPS_SCRIPTS/cotmate-watcher.sh"
+    printf '  %swatcher%s    %s\n' "$BOLD" "$RESET" "$COTMATE_DIR/cotmate-watcher.sh"
     printf '  %sagent%s      %s\n' "$BOLD" "$RESET" "$PLIST_DEST"
 else
     printf '  %swatcher%s    %s(not installed — minimal install)%s\n' "$BOLD" "$RESET" "$DIM" "$RESET"

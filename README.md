@@ -16,8 +16,8 @@
 
 `cotmate` is CotEditor's best mate. It lets you open and edit files on remote servers via SSH session in
 [CotEditor](https://coteditor.com/) — the same way TextMate users have used
-`rmate` for over a decade. `cotmate` is ***rmate-compatible*** which means you can point 
-`rmate` at a file over SSH, edit it locally, save, and the changes 
+`rmate` for over a decade. `cotmate` is ***rmate-compatible*** which means you can point
+`rmate` at a file over SSH, edit it locally, save, and the changes
 go straight back to the remote host.
 
 - **No Ruby.** `cotmate` is pure Python, [rmate](vendor/rmate/rmate) is pure Bash.
@@ -46,8 +46,8 @@ go straight back to the remote host.
 
 TextMate has built-in support for `rmate` — a tiny protocol that lets a
 remote shell tell your local editor to open a file. CotEditor has no such
-support. `cotmate` bridges that gap: it listens on the standard `rmate` port
-(52698), materialises remote files as local mirrors, opens them in
+support. `cotmate` bridges that gap: it listens on the standard `rmate` port (52698), materialises remote files as local
+mirrors, opens them in
 CotEditor, and streams your saves back to the remote host over the same
 SSH connection that `rmate` opened.<br/>
 
@@ -72,7 +72,9 @@ SSH connection that `rmate` opened.<br/>
 ## Requirements
 
 - macOS 12 (Monterey) or later
-	- **Maintainer-tested:** macOS 12.7.6 (Monterey) — yes, this is still my daily driver in 2026 - brilliant macOS version in my opinion (and it works amazingly great even on my maxed-out, rusty but trusty, MBP Pro Mid 2012). Compatibility with this release is verified by hand before each release.
+	- **Maintainer-tested:** macOS 12.7.6 (Monterey) — yes, this is still my daily driver in 2026 - brilliant macOS
+	  version in my opinion (and it works amazingly great even on my maxed-out, rusty but trusty, MBP Pro Mid 2012).
+	  Compatibility with this release is verified by hand before each release.
 	- **CI-tested:** macOS 26 (Tahoe), arm64. GitHub retired all runners
 	  older than macOS 14, so Monterey compatibility rests on the code's
 	  conservative design (stdlib only, Python 3.9.6 syntax) plus manual
@@ -102,7 +104,7 @@ What does the installer do:
 
 1. Copies `cotmate` to `~/Library/Application Support/CotMate/bin/cotmate`.
 2. Copies the launcher and watcher scripts into
-   `~/Library/Application Scripts/com.coteditor.CotEditor/`.
+   `~/Library/Application Scripts/com.coteditor.CotEditor/CotMate/`.
 3. Installs a launchd agent at
    `~/Library/LaunchAgents/com.radekkozak.cotmate.watcher.plist`.
 4. Installs the optional CotEditor hook bundle.
@@ -123,7 +125,7 @@ If you'd rather not have a background agent then run:
 > **only when you open any non-empty document** in CotEditor and stop when CotEditor quits.
 > The "non-empty document" is required because CotEditor doesn't offer a hook into its
 > own lifecycle (namely we cannot hook into when CotEditor is launched) - only into
-> `document opened` and `document saved` events. 
+> `document opened` and `document saved` events.
 
 ## Remote setup
 
@@ -203,13 +205,18 @@ CotEditor install is untouched.
 
 ## Contributing
 
-If you happen to use [CotEditor](https://coteditor.com/) daily on your macOS and be so nice and willing to test `cotmate` in real-life scenarios on your machine it would be greatly appreciated. I cannot own every MacBook machine out there (duh) and have every macOS system installed to be 100% sure, and CI testing on Github can offer certainty only to a point of running some unit tests and checks. 
+If you happen to use [CotEditor](https://coteditor.com/) daily on your macOS and be so nice and willing to test
+`cotmate` in real-life scenarios on your machine it would be greatly appreciated. I cannot own every MacBook machine out
+there (duh) and have every macOS system installed to be 100% sure, and CI testing on Github can offer certainty only to
+a point of running some unit tests and checks.
 
-If you find any problem do not hesitate to open an [ISSUE](https://github.com/radekkozak/cotmate/issues/new). 
+If you find any problem do not hesitate to open an [ISSUE](https://github.com/radekkozak/cotmate/issues/new).
 
 If you would like to contribute code you can do so through GitHub by forking the repository and sending a pull request.
 
-When submitting code, please make every effort to follow existing conventions and style in order to keep the code as readable as possible. Please also make sure your code compiles and passes all tests by running `python3 -m unittest discover -s tests -v` locally before submitting. 
+When submitting code, please make every effort to follow existing conventions and style in order to keep the code as
+readable as possible. Please also make sure your code compiles and passes all tests by running
+`python3 -m unittest discover -s tests -v` locally before submitting.
 
 ## Credits
 

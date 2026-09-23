@@ -8,7 +8,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>__HOME__/Library/Application Scripts/com.coteditor.CotEditor/cotmate-watcher.sh</string>
+        <string>__HOME__/Library/Application Scripts/com.coteditor.CotEditor/CotMate/cotmate-watcher.sh</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 #
 # cotmate uninstaller
-# Removes everything install.sh added.  CotEditor itself is untouched.
+# Removes everything install.sh added. CotEditor itself is untouched.
 #
 set -uo pipefail
 
 APPS_SCRIPTS="$HOME/Library/Application Scripts/com.coteditor.CotEditor"
+COTMATE_DIR="$APPS_SCRIPTS/CotMate"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
 PLIST_LABEL="com.radekkozak.cotmate.watcher"
 PLIST_DEST="$LAUNCH_AGENTS/${PLIST_LABEL}.plist"
@@ -79,9 +80,14 @@ fi
 
 # --- 5. remove scripts and hook ---------------------------------------------
 
+# Current (foldered) install
+rm -rf "$COTMATE_DIR"
+
+# Legacy (flat) install
 rm -f  "$APPS_SCRIPTS/cotmate-launcher.sh"
 rm -f  "$APPS_SCRIPTS/cotmate-watcher.sh"
 rm -rf "$APPS_SCRIPTS/CotMateHook.scptd"
+
 success "Removed scripts and hook"
 
 # --- 6. remove server binary ------------------------------------------------

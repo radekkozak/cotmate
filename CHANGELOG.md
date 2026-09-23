@@ -2,6 +2,23 @@
 
 All notable changes to `cotmate` are documented here.
 
+## 1.3.0 
+
+### Changed
+
+- CotEditor scripts are now installed into a dedicated `CotMate/`
+  subfolder inside `~/Library/Application Scripts/com.coteditor.CotEditor/`,
+  grouping them under a single **CotMate** submenu in CotEditor's
+  Script menu (previously they appeared as three separate top-level entries).
+
+### Added
+
+- Installer now removes legacy flat-layout files from previous versions.
+
+### Migration
+
+- Re-run `./install.sh` then quit and reopen CotEditor.
+
 ## 1.2.2
 --------------------------
 
