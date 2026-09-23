@@ -131,7 +131,7 @@ If you'd rather not have a background agent then run:
 your server:
 
 ```sh
-scp bin/rmate user@server:~/.local/bin/
+scp vendor/rmate/rmate user@server:~/.local/bin/
 ssh user@server 'chmod +x ~/.local/bin/rmate'
 ```
 
